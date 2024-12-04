@@ -32,7 +32,7 @@ from plotly.subplots import make_subplots
 
 #%% POSITION
 
-def trace_figure_nav_pontoise(x,y,x_ref,y_ref,x_gps,y_gps):
+def trace_figure_nav_pontoise(x,y,x_ref,y_ref):
 
     r"""Ce script trace dans une fenêtre html le tracé calculé et la référence sur le 
         trajet de Pontoise
@@ -83,8 +83,8 @@ def trace_figure_nav_pontoise(x,y,x_ref,y_ref,x_gps,y_gps):
     x = x[0,:]
     y = y[0,:]
 
-    x_gnss = x_gps[0,:]
-    y_gnss = y_gps[0,:]  
+    # x_gnss = x_gps[0,:]
+    # y_gnss = y_gps[0,:]  
     # Création de la figure
     fig = go.Figure()
 
@@ -95,7 +95,7 @@ def trace_figure_nav_pontoise(x,y,x_ref,y_ref,x_gps,y_gps):
     fig.add_trace(go.Scatter(x=xref, y=yref, mode='lines', name='Référence'))
     # Ajout du tracé de la nav calculée
     fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name='INS'))
-    fig.add_trace(go.Scatter(x=x_gnss, y=y_gnss, mode='lines', name='GPS'))
+    # fig.add_trace(go.Scatter(x=x_gnss, y=y_gnss, mode='lines', name='GPS'))
     # Configuration des axes de la figure pour correspondre à ceux de l'image
     fig.update_xaxes(range=[1.728479, 2.305613131040893])
     fig.update_yaxes(range=[48.979906, 49.224106555952380])
