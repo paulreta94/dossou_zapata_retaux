@@ -31,8 +31,8 @@ from dataclasses import asdict
 # Choix de l'hybridation, choix disponibles : 'zupt', 'gps', 'odo', 'vordme'
 CHOIX_HYB = "odo"
 # Choix de l'essai, choix disponibles : 'aller', 'boucle', 'soutenance'
-CHOIX_TRAJ = "boucle"
-# CHOIX_TRAJ = 'aller'
+# CHOIX_TRAJ = "boucle"
+CHOIX_TRAJ = "aller"
 
 # --------------------------------------------------------------------------------
 
@@ -82,7 +82,7 @@ donnees_in = NavInput(temps_s=contenu_inertiel["temps_s"])
 donnees_in.alloc_memoire()
 
 
-# %% Conditions initiales
+# Conditions initiales
 
 # Condition initiale du cap
 Cap_initial_rad = 41.14 * np.pi / 180
@@ -103,33 +103,15 @@ donnees_in.Cap_initial_rad = Cap_initial_rad
 donnees_in.Lon_initiale_rad = Lon_initiale_rad
 donnees_in.Lat_initiale_rad = Lat_initiale_rad
 donnees_in.Alt_initiale_m = Alt_initiale_m
-
-# Rajouter ici les données non inertielles
-# donnees_in.lat_gnss = contenu_non_inertiel["lat_gps_deg"]
-# donnees_in.lon_gnss = contenu_non_inertiel["lon_gps_deg"]
-# donnees_in.alt_gnss = contenu_non_inertiel["alt_gps_m"]
-# donnees_in.nsat_gnss = contenu_non_inertiel["nb_sat"]
-# donnees_in.val_gnss = contenu_non_inertiel["val"]
-# donnees_in.temps_gnss = contenu_non_inertiel["temps_s"]
-
-# donnees_in.dme_bvs = contenu_non_inertiel["dist_vor_beauvais_nav_m"]
-# donnees_in.vor_bvs = contenu_non_inertiel["ang_vor_beauvais_nav_deg"]
-# donnees_in.dme_dvl = contenu_non_inertiel["dist_vor_deauville_nav_m"]
-# donnees_in.vor_dvl = contenu_non_inertiel["ang_vor_deauville_nav_deg"]
-# donnees_in.dme_pon = contenu_non_inertiel["dist_vor_pontoise_nav_m"]
-# donnees_in.vor_pon = contenu_non_inertiel["ang_vor_pontoise_nav_deg"]
-# donnees_in.dme_rou = contenu_non_inertiel["dist_vor_rouen_nav_m"]
-# donnees_in.vor_rou = contenu_non_inertiel["ang_vor_rouen_nav_deg"]
-
 donnees_in.odo = contenu_non_inertiel["Dist_Odo_m"]
 
 
-# %% boucle itérative sur les données
+# boucle itérative sur les données
 
 # Boucle de calcul, sortant la nouvelle structure avec les données calculées
 donnees_out = calcul_nav(donnees_in, donnees_NI_dispo)
 
-# %% Écriture des fichiers binaires
+# Écriture des fichiers binaires
 
 print("Écriture des données en cours...")
 

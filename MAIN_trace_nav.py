@@ -12,21 +12,26 @@ Créé le 10 juillet 2024
 
 --------------------------------
 """
-#import des librairies et des fichiers utiles au bon déroulé du script MAIN
-from trace_figures import (trace_figure_nav_pontoise,
-                           trace_figure_nav_fecamp,
-                           trace_erreurs_position,
-                           trace_figure_vitesses,
-                           trace_erreurs_vitesse,
-                           trace_figure_attitudes,
-                           trace_erreurs_attitude,
-                           calcul_erreurs_position,
-                           calcul_erreurs_vitesse,
-                           calcul_erreurs_attitude,
-                           trace_increments,
-                           trace_positions_gnss,
-                           trace_data_vordme,
-                           trace_positions_vordme,
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+# import des librairies et des fichiers utiles au bon déroulé du script MAIN
+from trace_figures import (
+    trace_figure_nav_pontoise,
+    trace_figure_nav_fecamp,
+    trace_erreurs_position,
+    trace_figure_vitesses,
+    trace_erreurs_vitesse,
+    trace_figure_attitudes,
+    trace_erreurs_attitude,
+    calcul_erreurs_position,
+    calcul_erreurs_vitesse,
+    calcul_erreurs_attitude,
+    trace_increments,
+    trace_positions_gnss,
+    trace_data_vordme,
+    trace_positions_vordme,
 )
 import scipy
 from pathlib import Path
@@ -36,49 +41,55 @@ from Lecture_donnees import (
 )
 import webbrowser
 
-#--------------------------- CHOIX DE L'ESSAI---------------------------------
+# --------------------------- CHOIX DE L'ESSAI---------------------------------
 
 # Choix de l'essai, choix disponibles : 'aller', 'boucle'
-CHOIX_TRAJ = 'boucle'
-# CHOIX_TRAJ = 'aller'
+# CHOIX_TRAJ = "boucle"
+CHOIX_TRAJ = "aller"
 # Choix de la sauvegarde des figures, choix disponibles : True ou False (booléen)
 SAVE_FIG = False
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
-print ("Import des fichiers de données en cours...")
+print("Import des fichiers de données en cours...")
 
 # Lecture du fichier binaire de la navigation calculée
-contenu_nav_calculee = scipy.io.loadmat('Nav_calculee_etudiants_modifiable.mat')
+contenu_nav_calculee = scipy.io.loadmat("Nav_calculee_etudiants_modifiable.mat")
 
 # On remonte au dossier parent du script actuel
 rep_tp = Path(__file__).parent
 # Le chemin va chercher la navigation parfaite de l'essai choisi
-chemin_nav_parfaite = rep_tp / '02-Navigations_parfaites' / f"Nav_reference_{corres_traj_chemin[CHOIX_TRAJ]}.mat"
+chemin_nav_parfaite = (
+    rep_tp
+    / "02-Navigations_parfaites"
+    / f"Nav_reference_{corres_traj_chemin[CHOIX_TRAJ]}.mat"
+)
 # On importe les données contenues dans le fichier
 contenu_nav_parfaite = scipy.io.loadmat(chemin_nav_parfaite)
 # On récupère le nom du fichier
 file_name = f"Nav_reference_{corres_traj_chemin[CHOIX_TRAJ]}.mat"
 
-#Déduction de la carte à utiliser en fonction du nom du fichier
+# Déduction de la carte à utiliser en fonction du nom du fichier
 map_utile = def_map(file_name)
 
 print("Fin de l'import de données, début de tracé et de calcul des figures.")
 
-#%% Tracé position + erreurs de position
+# %% Tracé position + erreurs de position
 # Tracé des navigations parfaite et calculée en 2D dans une fenêtre HTML
-if map_utile == 'Pontoise':
-    trace_figure_nav_pontoise(contenu_nav_calculee["Lon_calculee_deg"],
-                            contenu_nav_calculee["Lat_calculee_deg"],
-                            contenu_nav_parfaite["longitude_ins"],
-                            contenu_nav_parfaite["latitude_ins"],
-                            contenu_nav_calculee["Lon_gnss"],
-                            contenu_nav_calculee["Lat_gnss"])
-elif map_utile == 'Fecamp':
-    trace_figure_nav_fecamp(contenu_nav_calculee["Lon_calculee_deg"],
-                            contenu_nav_calculee["Lat_calculee_deg"],
-                            contenu_nav_parfaite["longitude_ins"],
-                            contenu_nav_parfaite["latitude_ins"])
+if map_utile == "Pontoise":
+    trace_figure_nav_pontoise(
+        contenu_nav_calculee["Lon_calculee_deg"],
+        contenu_nav_calculee["Lat_calculee_deg"],
+        contenu_nav_parfaite["longitude_ins"],
+        contenu_nav_parfaite["latitude_ins"],
+    )
+elif map_utile == "Fecamp":
+    trace_figure_nav_fecamp(
+        contenu_nav_calculee["Lon_calculee_deg"],
+        contenu_nav_calculee["Lat_calculee_deg"],
+        contenu_nav_parfaite["longitude_ins"],
+        contenu_nav_parfaite["latitude_ins"],
+    )
 
 # Calcul des erreurs de position de la navigation calculée par rapport à la navigation parfaite
 # err_pos_x, err_pos_y, err_pos_z = calcul_erreurs_position(contenu_nav_parfaite["longitude_ins"],
@@ -93,7 +104,7 @@ elif map_utile == 'Fecamp':
 # Afficher la figure dans une fenêtre à part
 
 
-#%% Tracé vitesses + erreurs de vitesse
+# %% Tracé vitesses + erreurs de vitesse
 # Tracé des vitesses géographiques du porteur en fonction du temps
 # fig2 = trace_figure_vitesses(contenu_nav_calculee["temps_s"],
 #                             contenu_nav_calculee["Vn_calculee_ms"],
@@ -102,7 +113,7 @@ elif map_utile == 'Fecamp':
 # Afficher la figure dans une fenêtre à part
 
 
-#Calcul des erreurs de vitesse entre les vitesses calculées et parfaites
+# Calcul des erreurs de vitesse entre les vitesses calculées et parfaites
 # err_vit_x, err_vit_y, err_vit_z = calcul_erreurs_vitesse(contenu_nav_parfaite["vit_ins_n"],
 #                                                         contenu_nav_parfaite["vit_ins_w"],
 #                                                         contenu_nav_parfaite["vit_ins_z"],
@@ -113,7 +124,7 @@ elif map_utile == 'Fecamp':
 # Tracé des erreurs de vitesse en fonction du temps
 # fig3 = trace_erreurs_vitesse(contenu_nav_calculee["temps_s"],err_vit_x, err_vit_y, err_vit_z)
 
-#%% Tracé attitudes + erreurs d'attitudes
+# %% Tracé attitudes + erreurs d'attitudes
 # Tracé des attitudes et du cap du porteur en fonction du temps
 # fig4 = trace_figure_attitudes(contenu_nav_calculee["temps_s"],
 #                             contenu_nav_calculee["Cap_calcule_rad"],
@@ -135,28 +146,36 @@ elif map_utile == 'Fecamp':
 #                     contenu_nav_calculee["Inc_Vit_Xm"],contenu_nav_calculee["Inc_Vit_Ym"],contenu_nav_calculee["Inc_Vit_Zm"],
 #                     contenu_nav_calculee["Inc_Ang_Xm"],contenu_nav_calculee["Inc_Ang_Ym"],contenu_nav_calculee["Inc_Ang_Zm"],)
 
-# fig7 = trace_positions_gnss(contenu_nav_calculee["temps_s"],
-#                     contenu_nav_calculee["Lat_gnss"],contenu_nav_calculee["Lon_gnss"],contenu_nav_calculee["Alt_gnss"],
-#                     contenu_nav_parfaite["latitude_ins"],contenu_nav_parfaite["longitude_ins"],contenu_nav_parfaite["altitude_ins"])
+fig7 = trace_positions_gnss(
+    contenu_nav_calculee["temps_s"][0:70600],
+    contenu_nav_calculee["Lat_calculee_deg"],
+    contenu_nav_calculee["Lon_calculee_deg"],
+    contenu_nav_calculee["Alt_calculee_m"],
+    contenu_nav_parfaite["latitude_ins"],
+    contenu_nav_parfaite["longitude_ins"],
+    contenu_nav_parfaite["altitude_ins"],
+)
+# plt.subplot(2, 1, 1)
+# plt.plot(contenu_nav_calculee["temps_s"], contenu_nav_calculee["Lat_calculee_deg"], label="Latitude", color="blue")
+# plt.ylabel("Latitude")
+# plt.title("Latitude vs Time")
+# plt.grid()
+# plt.legend()
 
-fig8 = trace_data_vordme(contenu_nav_calculee["temps_s"],
-                    contenu_nav_calculee["vor_bvs"],contenu_nav_calculee["dme_bvs"],
-                    contenu_nav_calculee["vor_dvl"],contenu_nav_calculee["dme_dvl"],
-                    contenu_nav_calculee["vor_pon"],contenu_nav_calculee["dme_pon"],
-                    contenu_nav_calculee["vor_rou"],contenu_nav_calculee["dme_rou"])
+# # (Tangage)
+# plt.subplot(2, 1, 2)
+# plt.plot(contenu_nav_calculee["temps_s"], contenu_nav_calculee["Lon_calculee_deg"], label="Longitude", color="green")
+# plt.ylabel("Longitude")
+# plt.title("Longitude vs Time")
+# plt.grid()
+# plt.legend()
 
-fig9 = trace_positions_vordme(contenu_nav_calculee["temps_s"],
-                    contenu_nav_parfaite["latitude_ins"],contenu_nav_parfaite["longitude_ins"],contenu_nav_parfaite["altitude_ins"],
-                    contenu_nav_calculee["vor_bvs"],contenu_nav_calculee["dme_bvs"],
-                    contenu_nav_calculee["vor_dvl"],contenu_nav_calculee["dme_dvl"],
-                    contenu_nav_calculee["vor_pon"],contenu_nav_calculee["dme_pon"],
-                    contenu_nav_calculee["vor_rou"],contenu_nav_calculee["dme_rou"])
-
+# plt.show()
 print("Fin d'appel des figures, vous pouvez les visualiser maintenant.")
 
-#%% Enregistrement des figures
+# %% Enregistrement des figures
 
-if SAVE_FIG == True :
+if SAVE_FIG == True:
     # Enregistrer les figures dans le répertoire
     # Enregistrement des figures en HTML
     # fig1.write_html("Erreurs_de_position.html")
@@ -172,7 +191,7 @@ if SAVE_FIG == True :
     webbrowser.open("Attitudes.html")
     webbrowser.open("Erreurs_d_attitudes.html")
 
-else : 
+else:
     # Affichage des figures dans le navigateur
     # fig1.show()
     # fig2.show()
@@ -180,6 +199,6 @@ else :
     # fig4.show()
     # fig5.show()
     # fig6.show()
-    # fig7.show()
-    fig8.show()
-    fig9.show()
+    fig7.show()
+    # fig8.show()
+    # fig9.show()
