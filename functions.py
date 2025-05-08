@@ -1,119 +1,81 @@
+import numpy as numpy
 import numpy as np
-import scipy
-import plotly
-import matplotlib
-import tqdm
+from math import sin, cos, tan, asin, acos, atan2, fabs, sqrt
 
 
-# ------------------ Boucle ACCELERO -------------------------
-global omega
+def angle2dcm(yaw, pitch, roll, input_units="rad", rotation_sequence="321"):
+    """
+    Returns a transformation matrix (aka direction cosine matrix or DCM) which
+    transforms from navigation to body frame.  Other names commonly used,
+    besides DCM, are `Cbody2nav` or `Rbody2nav`.  The rotation sequence
+    specifies the order of rotations when going from navigation-frame to
+    body-frame.  The default is '321' (i.e Yaw -> Pitch -> Roll).
+    Parameters
+    ----------
+    yaw   : yaw angle, units of input_units.
+    pitch : pitch angle, units of input_units.
+    roll  : roll angle , units of input_units.
+    input_units: units for input angles {'rad', 'deg'}, optional.
+    rotationSequence: assumed rotation sequence {'321', others can be
+                                                implemented in the future}.
+    Returns
+    -------
+    Rnav2body: 3x3 transformation matrix (numpy matrix data type).  This can be
+               used to convert from navigation-frame (e.g NED) to body frame.
 
+    Notes
+    -----
+    Since Rnav2body is a proper transformation matrix, the inverse
+    transformation is simply the transpose.  Hence, to go from body->nav,
+    simply use: Rbody2nav = Rnav2body.T
+    Examples:
+    ---------
+    >>> import numpy as np
+    >>> from nav import angle2dcm
+    >>> g_ned = np.matrix([[0, 0, 9.8]]).T # gravity vector in NED frame
+    >>> yaw, pitch, roll = np.deg2rad([90, 15, 0]) # vehicle orientation
+    >>> g_body = Rnav2body * g_ned
+    >>> g_body
+    matrix([[-2.53642664],
+            [ 0.        ],
+            [ 9.4660731 ]])
 
-def compute_t_g_b(K, R, T):
-    return np.array(
-        [
-            [np.cos(K) * np.cos(T), -np.sin(K) * np.cos(T), np.sin(T)],
+    >>> g_ned_check = Rnav2body.T * g_body
+    >>> np.linalg.norm(g_ned_check - g_ned) < 1e-10 # should match g_ned
+    True
+    Reference
+    ---------
+    [1] Equation 2.4, Aided Navigation: GPS with High Rate Sensors, Jay A. Farrel 2008
+    [2] eul2Cbn.m function (note, this function gives body->nav) at:
+    http://www.gnssapplications.org/downloads/chapter7/Chapter7_GNSS_INS_Functions.tar.gz
+    """
+    # Apply necessary unit transformations.
+    if input_units == "rad":
+        pass
+    elif input_units == "deg":
+        yaw, pitch, roll = np.radians([yaw, pitch, roll])
+
+    # Build transformation matrix Rnav2body.
+    s_r, c_r = sin(roll), cos(roll)
+    s_p, c_p = sin(pitch), cos(pitch)
+    s_y, c_y = sin(yaw), cos(yaw)
+
+    if rotation_sequence == "321":
+        # This is equivalent to Rnav2body = R(roll) * R(pitch) * R(yaw)
+        # where R() is the single axis rotation matrix.  We implement
+        # the expanded form for improved efficiency.
+        Rnav2body = np.matrix(
             [
-                -np.sin(K) * np.cos(R) + np.cos(K) * np.sin(T) * np.sin(R),
-                -np.cos(K) * np.cos(R) - np.sin(K) * np.sin(T) * np.sin(R),
-                -np.cos(T) * np.sin(R),
-            ],
-            [
-                np.sin(K) * np.sin(R) + np.cos(K) * np.sin(T) * np.cos(R),
-                np.cos(K) * np.sin(R) - np.sin(K) * np.sin(T) * np.cos(R),
-                -np.cos(T) * np.cos(R),
-            ],
-        ]
-    ).T
+                [c_y * c_p, s_y * c_p, -s_p],
+                [-s_y * c_r + c_y * s_p * s_r, c_y * c_r + s_y * s_p * s_r, c_p * s_r],
+                [s_y * s_r + c_y * s_p * c_r, -c_y * s_r + s_y * s_p * c_r, c_p * c_r],
+            ]
+        )
 
+    else:
+        # No other rotation sequence is currently implemented
+        print("WARNING (angle2dcm): requested rotation_sequence is unavailable.")
+        print("                     NaN returned.")
+        Rnav2body = np.nan
 
-def compute_t_g_t(L: float, G: float):
-    """Returns the matrix enabling to shift from geo to terrestrial referential"""
-    return np.array(
-        [
-            [-np.sin(L) * np.cos(G), -np.sin(L) * np.sin(G), np.cos(L)],
-            [np.sin(G), -np.cos(G), 0],
-            [np.cos(L) * np.cos(G), np.cos(L) * np.sin(G), np.sin(L)],
-        ]
-    )
-
-
-# Creation des matrices de rotation
-def compute_t_t_i(omega, t, L, G, K, T, R):
-    return np.array(
-        [
-            [np.cos(omega * t), np.sin(omega * t), 0],
-            [-np.sin(omega * t), np.cos(omega * t), 0],
-            [0, 0, 1],
-        ]
-    )
-
-
-# Compensation Coriolis et acc.centripète
-# def coriolis_matrix(T_p_t, ro_p, omega):
-#     matA = ro_p + 2 * T_p_t * np.array([[0], [0], [omega]])
-#     coriolisA = antisymmetric_matrix(matA)
-#     return coriolisA
-
-
-g_geo_vector = np.array([[0], [0], [9.81]])  # unit : [m/s^2]
-omega_inertial_vector = np.array([[0], [0], [15 * np.pi / 180 / 3600]])
-
-
-def compute_omega_b_b_g(t_b_g, t_g_t, omega_b_b_i, rho_g_x, rho_g_y):
-    """Returns, in the body referential, the rotation vector of body relative to the terrestrial one"""
-    return (
-        omega_b_b_i
-        - t_b_g @ t_g_t * omega_inertial_vector
-        - t_b_g * np.array([rho_g_x, rho_g_y, 0])
-    )
-
-
-def compute_omega_g_g_t(v_gx: float, v_gy: float, lat: float):
-    """Returns the vector of the angular speeds in the geographical referential"""
-    Rt = 6378000.0  # Rayon terrestre en mètres
-    return np.array([[-v_gy/Rt], [v_gx / Rt], [-np.tan(lat) * v_gx/ Rt]])
-
-
-def antisymmetric(u: np.ndarray):
-    """Returns the corresponding antisymmetrical matrix"""
-    # u_x, u_y, u_z = u[0, 0], u[1, 0], u[2, 0]
-    return np.array([[0, -u[0,0], u[1,0]], [u[2,0], 0, -u[0,0]], [-u[1,0], u[0,0], 0]])
-
-
-def extract_h_r_p(t_b_g, time_instant):
-    """Returns heading, roll and pitch from t_b_g matrix"""
-    T = np.arcsin(t_b_g[0, 2])
-    R = np.arcsin(-t_b_g[1, 2] / np.cos(T))
-    K = np.arccos(t_b_g[0, 0] / np.cos(T))
-    # if np.isnan(T):
-    #     print(f"Warning : could not extract pitch at step {time_instant}")
-    # if np.isnan(R):
-    #     print(f"Warning : could not extract roll at step {time_instant}")
-    # if np.isnan(K):
-    #     print(f"Warning : could not extract heading at step {time_instant}")
-
-
-    
-    return K, R, T
-
-
-def extract_lat_lon(t_g_t: np.ndarray, time_instant: float):
-    # TODO : faire un moyennage sur toutes les valeurs de la matrice
-    # try :
-    #     float(np.arccos(t_g_t[0, 2]))
-    lat = np.arccos(t_g_t[0,2])
-    # except ValueError:
-    #     print(f"Warning : could not extract latitude at step number {time_instant}")
-    #     lat = -1
-    # try:
-    #     float(np.arcsin(t_g_t[1, 0]))
-    lon = np.arcsin(t_g_t[1,0])
-    # except ValueError:
-    #     print(f"Warning : could not extract latitude at step {time_instant}")
-    #     lon = -1
-    # if np.isnan(lat):
-    #     raise ValueError(f"Could not extract latitude at step number {time_instant}")
-    # if np.isnan(lon):
-    #     raise ValueError(f"Could not extract latitude at step {time_instant}")
-    return lat, lon
+    return Rnav2body
