@@ -40,7 +40,7 @@ print(
     "Configuration de l'essai, hybridation : ",
     CHOIX_HYB,
     " et trajectoire : ",
-    CHOIX_TRAJ,
+    CHOIX_TRAJ,"\n",
 )
 # On remonte au dossier parent du script actuel
 rep_tp = Path(__file__).parent
@@ -106,9 +106,9 @@ donnees_in.inc_vit_z_ms = contenu_inertiel["inc_vit_z_ms"]
 donnees_in.inc_angl_x_rad = contenu_inertiel["inc_angl_x_rad"]
 donnees_in.inc_angl_y_rad = contenu_inertiel["inc_angl_y_rad"]
 donnees_in.inc_angl_z_rad = contenu_inertiel["inc_angl_z_rad"]
-donnees_in.Cap_initial_rad = perfect_nav["cap_ins"][0,1]
-donnees_in.Rou_initial_rad = perfect_nav["roulis_ins"][0,1]
-donnees_in.Tan_initial_rad = perfect_nav["tangage_ins"][0,1]
+donnees_in.Cap_initial_rad = np.deg2rad(perfect_nav["cap_ins"][0,1])
+donnees_in.Rou_initial_rad = np.deg2rad(perfect_nav["roulis_ins"][0,1])
+donnees_in.Tan_initial_rad = np.deg2rad(perfect_nav["tangage_ins"][0,1])
 donnees_in.Lon_initiale_rad = Lon_initiale_rad
 donnees_in.Lat_initiale_rad = Lat_initiale_rad
 donnees_in.Alt_initiale_m = Alt_initiale_m

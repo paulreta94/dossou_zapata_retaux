@@ -7,6 +7,10 @@ conventions :
     - [t] : Earth Centered Earth Fixed (ECEF) frame
     - [g] : local geographical frame : North-West-Up
     - [b] : body frame : Forth-Right-Down"""
+omega_t_ti = np.array([0,0,np.deg2rad(15.04)/3600]) # [rad/s]
+dt = 1/100 # [s]
+r_earth = 6378000 # [m]
+g = 9.81 # [m/s^2]
 
 def rotation(angle:float, axis:str):
     """angle : float - angle in rad
@@ -26,10 +30,14 @@ def rotation(angle:float, axis:str):
                          [0,              0,             1]])
 
 def lat_lon_2_tgt(lat:float, lon: float):
-    "Returns the matrix enabling to shift from [t] to [g]"
+    """Returns the matrix enabling to shift from [t] to [g]"""
     return np.array([[-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)],
                      [np.sin(lon),                -np.cos(lon),               0],
                      [np.cos(lat) * np.cos(lon),  np.cos(lat) * np.sin(lon),  np.sin(lat)]])
+
+def tgt_2_lat_lon(tgt : np.ndarray):
+    """Extracts latitude and longitude from Tgt"""
+    return (np.arccos(tgt[0,2]), np.arcsin(tgt[1,0]))
     
 def k_r_t_2_tbg(k: float, r:float, t:float):
     """Returns matrix enabling to shift from [g] to [b]"""
@@ -43,93 +51,30 @@ def k_r_t_2_tbg(k: float, r:float, t:float):
                       np.cos(k) * np.sin(r) - np.sin(k) * np.sin(t) * np.cos(r),
                       -np.cos(t) * np.cos(r)]])
     
-def compute_curve_matrix(lat: float, r_earth: float):
+def compute_curve_matrix(lat: float):
     return np.array([[0,         -1/r_earth,             0],
                      [1/r_earth, 0,                      0],
                      [0,         -1/r_earth*np.tan(lat), 0]])
     
 def tbg_2_k_r_t(tbg:np.ndarray):
     """Extracting heading (k), roll(r) and pitch (t) from tbg matrix"""
-    return np.array([np.arctan2(-tbg[0,1], tbg[0,0]), 
+    return (np.arctan2(-tbg[0,1], tbg[0,0]), 
     # return np.array([-np.arctan2(tbg[0,0], tbg[0,1]), 
-                     np.arctan2(-tbg[1,2],-tbg[2,2]), 
+            np.arctan2(-tbg[1,2],-tbg[2,2]), 
                     #  np.arctan2(tbg[2,2],tbg[1,2]), 
-                     np.arccos(np.sqrt(1 - tbg[0,2] ** 2))])
-    
+            np.arccos(np.sqrt(1 - tbg[0,2] ** 2)))
 
-def angle2dcm(yaw, pitch, roll, input_units="rad", rotation_sequence="321"):
-    """
-    Returns a transformation matrix (aka direction cosine matrix or DCM) which
-    transforms from navigation to body frame.  Other names commonly used,
-    besides DCM, are `Cbody2nav` or `Rbody2nav`.  The rotation sequence
-    specifies the order of rotations when going from navigation-frame to
-    body-frame.  The default is '321' (i.e Yaw -> Pitch -> Roll).
-    Parameters
-    ----------
-    yaw   : yaw angle, units of input_units.
-    pitch : pitch angle, units of input_units.
-    roll  : roll angle , units of input_units.
-    input_units: units for input angles {'rad', 'deg'}, optional.
-    rotationSequence: assumed rotation sequence {'321', others can be
-                                                implemented in the future}.
-    Returns
-    -------
-    Rnav2body: 3x3 transformation matrix (numpy matrix data type).  This can be
-               used to convert from navigation-frame (e.g NED) to body frame.
+def compute_delta_v_geo(t_g_b:np.ndarray, delta_v_b:np.ndarray):
+    return t_g_b @ delta_v_b - np.array([0,0,g]) * dt   
 
-    Notes
-    -----
-    Since Rnav2body is a proper transformation matrix, the inverse
-    transformation is simply the transpose.  Hence, to go from body->nav,
-    simply use: Rbody2nav = Rnav2body.T
-    Examples:
-    ---------
-    >>> import numpy as np
-    >>> from nav import angle2dcm
-    >>> g_ned = np.matrix([[0, 0, 9.8]]).T # gravity vector in NED frame
-    >>> yaw, pitch, roll = np.deg2rad([90, 15, 0]) # vehicle orientation
-    >>> g_body = Rnav2body * g_ned
-    >>> g_body
-    matrix([[-2.53642664],
-            [ 0.        ],
-            [ 9.4660731 ]])
+def antisymm(u:np.ndarray):
+    return np.array([[0,     -u[2], u[1]],
+                     [u[2],  0,     -u[0]],
+                     [-u[1], u[0],  0]]) 
 
-    >>> g_ned_check = Rnav2body.T * g_body
-    >>> np.linalg.norm(g_ned_check - g_ned) < 1e-10 # should match g_ned
-    True
-    Reference
-    ---------
-    [1] Equation 2.4, Aided Navigation: GPS with High Rate Sensors, Jay A. Farrel 2008
-    [2] eul2Cbn.m function (note, this function gives body->nav) at:
-    http://www.gnssapplications.org/downloads/chapter7/Chapter7_GNSS_INS_Functions.tar.gz
-    """
-    # Apply necessary unit transformations.
-    if input_units == "rad":
-        pass
-    elif input_units == "deg":
-        yaw, pitch, roll = np.radians([yaw, pitch, roll])
+def bortz_rot(phi_vector):
+    phi_norm = np.linalg.norm(phi_vector)
+    return np.eye(3) - np.sin(phi_norm) / phi_norm * antisymm(phi_vector) + (1 - np.cos(phi_norm)) / phi_norm ** 2 * antisymm(phi_vector) @ antisymm(phi_vector)
 
-    # Build transformation matrix Rnav2body.
-    s_r, c_r = sin(roll), cos(roll)
-    s_p, c_p = sin(pitch), cos(pitch)
-    s_y, c_y = sin(yaw), cos(yaw)
-
-    if rotation_sequence == "321":
-        # This is equivalent to Rnav2body = R(roll) * R(pitch) * R(yaw)
-        # where R() is the single axis rotation matrix.  We implement
-        # the expanded form for improved efficiency.
-        Rnav2body = np.matrix(
-            [
-                [c_y * c_p, s_y * c_p, -s_p],
-                [-s_y * c_r + c_y * s_p * s_r, c_y * c_r + s_y * s_p * s_r, c_p * s_r],
-                [s_y * s_r + c_y * s_p * c_r, -c_y * s_r + s_y * s_p * c_r, c_p * c_r],
-            ]
-        )
-
-    else:
-        # No other rotation sequence is currently implemented
-        print("WARNING (angle2dcm): requested rotation_sequence is unavailable.")
-        print("                     NaN returned.")
-        Rnav2body = np.nan
-
-    return Rnav2body
+def compute_delta_theta_g_gi(curve_matrix:np.ndarray, v_geo:np.ndarray, t_g_t:np.ndarray):
+    return (curve_matrix @ v_geo + t_g_t @ omega_t_ti) * dt

@@ -2,7 +2,7 @@
 
 import numpy as np
 from Gerer_donnees import NavInput, NavOutput
-from tqdm import tqdm
+from tqdm import tqdm #type:ignore
 from functions import *
 from kalman_filter_v7 import *
 
@@ -72,7 +72,7 @@ def calcul_nav(data_in: NavInput, donnees_NI_dispo: bool):
     g = 9.81  # attraction terrestre
     dt = 0.01  # pas de temps
     Rt = 6378000.0  # Rayon terrestre en mètres
-    alignment_duration = 777  # unit : seconds
+    omega_t_ti = np.array([0,0,np.deg2rad(15.04)/3600])
     # Initialisation de la navigation
     Rou[0, 0] = data_in.Rou_initial_rad  # Initialisation de la valeur de roulis
     Tan[0, 0] = data_in.Tan_initial_rad  # Initialisation de la valeur de tangage
@@ -80,130 +80,28 @@ def calcul_nav(data_in: NavInput, donnees_NI_dispo: bool):
     Lon[0, 0] = data_in.Lon_initiale_rad  # Initialisation de la valeur de longitude
     Lat[0, 0] = data_in.Lat_initiale_rad  # Initialisation de la valeur de latitude
     # Alt[0, 0] = data_in.Alt_initiale_m  # Initialisation de la valeur d'altitude
-    t_g_t = compute_t_g_t(Lat[0, 0], Lon[0, 0])
-    t_g_b = compute_t_g_b(Cap[0, 0], Rou[0, 0], Tan[0, 0])
-    t_b_g = t_g_b.T
-    v_geo_vector = np.zeros((3, 1))
-    omega_g_g_t = np.zeros((3, 1))
-    # heading_aln_error = Dy / (omega_t * np.cos(Lat[0, 0])) # alignement fin approximatif
-    x_error = np.ones((9, 1)) * 0.1
-    x_error_old = np.copy(x_error)
-    distance_ins = 0.0
-    # vertical search
-    roll = np.mean(
-        np.arctan2(
-            ivy[0 : int(alignment_duration / dt) + 1],
-            ivz[0 : int(alignment_duration / dt) + 1],
-        )[0]
-    )
-    pitch = np.mean(np.arcsin(-ivx[0 : int(alignment_duration / dt) + 1] / g)[0])
-    speed_error_vector = np.zeros((2, int(alignment_duration * 100)))
-    for t in tqdm.tqdm(
+    t_g_b = k_r_t_2_tbg(Cap[0, 0], Rou[0, 0], Tan[0, 0]).T # /!\ transposing t_b_g matrix
+    v_geo_vector = np.zeros((3, 1)).flatten()
+    # omega_g_g_t = np.zeros((3, 1))
+    t_g_t = lat_lon_2_tgt(Lat[0,0], Lon[0,0])
+    for t in tqdm(
         range(1, np.shape(temps)[1]),
-        # range(1, 70551),
         desc="Processing",
     ):
-        if (
-            t / 100 < alignment_duration  # alignment_duration = 777 s
-        ):  # t is an index which must be divided by the sampling frequency to be brought back in seconds
-            # we must determine the slope of the delta_VN error
-            # vertical = np.arctan2()
-            v_geo_vector = (
-                v_geo_vector
-                + t_g_b
-                @ np.array(
-                    [[ivx[0, t - 1]], [ivy[0, t - 1]], [ivz[0, t - 1]]]
-                )  # t_g_b @Iv_b
-                + (
-                    g_geo_vector
-                    - antisymmetric(omega_g_g_t + 2 * t_g_t @ omega_inertial_vector)
-                    @ v_geo_vector
-                )
-                * dt
-            )
-            # Alt[0, t] = Alt[0, t - 1] + v_geo_vector[2, 0] * dt
-
-            # Integration of t_g_t
-            t_g_t = t_g_t - antisymmetric(omega_g_g_t) @ t_g_t * dt
-
-            Lat[0, t], Lon[0, t] = extract_lat_lon(t_g_t, t)
-
-            # Gyrometers part
-            omega_b_b_g = (
-                np.array([[iax[0, t - 1]], [iay[0, t - 1]], [iaz[0, t - 1]]]) / dt
-                - t_g_b.T @ omega_g_g_t
-                - t_g_b.T @ t_g_t @ omega_inertial_vector
-            )
-            # Integration of t_b_g
-            t_b_g = t_b_g - antisymmetric(omega_b_b_g) @ t_b_g * dt
-            Cap[0, t], Rou[0, t], Tan[0, t] = extract_h_r_p(t_b_g, t)
-            omega_g_g_t = compute_omega_g_g_t(
-                v_geo_vector[0, 0], v_geo_vector[1, 0], Lat[0, t]
-            )
-            distance_ins = distance_ins + np.sqrt(
-                (Lat[0, t] - Lat[0, t - 1]) ** 2 + (Lon[0, t] - Lon[0, t - 1]) ** 2
-            )
-            # Kalman filtering of the INS algorithm output
-            x_error = kalman_filter(
-                # x_curr=x_error, # NO because reusing the previous error whilst it is supposed to be nulled by the KF
-                x_curr=abs(x_error_old - x_error),
-                l=Lat[0, t],
-                d_odo=d_odo[0, t],
-                d_ins=distance_ins,
-            )
-            Lat[0, t] = Lat[0, t] - x_error[0]  # x_error[0] = delta_lat
-            Lon[0, t] = Lon[0, t] - x_error[1]  # x_error[1] = delta_lon
-            x_error_old = np.copy(x_error)
-            speed_error_vector[0, t] = x_error[2, 0]  # north speed error
-            speed_error_vector[1, t] = x_error[3, 0]  # east speed error
-        else:
-            # Geographical speed integration
-            v_geo_vector = (
-                v_geo_vector
-                + t_g_b
-                @ np.array(
-                    [[ivx[0, t - 1]], [ivy[0, t - 1]], [ivz[0, t - 1]]]
-                )  # t_g_b @Iv_b
-                + (
-                    g_geo_vector
-                    - antisymmetric(omega_g_g_t + 2 * t_g_t @ omega_inertial_vector)
-                    @ v_geo_vector
-                )
-                * dt
-            )
-            # Alt[0, t] = Alt[0, t - 1] + v_geo_vector[2, 0] * dt
-
-            # Integration of t_g_t
-            t_g_t = t_g_t - antisymmetric(omega_g_g_t) @ t_g_t * dt
-
-            Lat[0, t], Lon[0, t] = extract_lat_lon(t_g_t, t)
-
-            # Gyrometers part
-            omega_b_b_g = (
-                np.array([[iax[0, t - 1]], [iay[0, t - 1]], [iaz[0, t - 1]]]) / dt
-                - t_g_b.T @ omega_g_g_t
-                - t_g_b.T @ t_g_t @ omega_inertial_vector
-            )
-            # Integration of t_b_g
-            t_b_g = t_b_g - antisymmetric(omega_b_b_g) @ t_b_g * dt
-            Cap[0, t], Rou[0, t], Tan[0, t] = extract_h_r_p(t_b_g, t)
-            omega_g_g_t = compute_omega_g_g_t(
-                v_geo_vector[0, 0], v_geo_vector[1, 0], Lat[0, t]
-            )
-            distance_ins = distance_ins + np.sqrt(
-                (Lat[0, t] - Lat[0, t - 1]) ** 2 + (Lon[0, t] - Lon[0, t - 1]) ** 2
-            )
-            # Kalman filtering of the INS algorithm output
-            x_error = kalman_filter(
-                # x_curr=x_error, # NO because reusing the previous error whilst it is supposed to be nulled by the KF
-                x_curr=abs(x_error_old - x_error),
-                l=Lat[0, t],
-                d_odo=d_odo[0, t],
-                d_ins=distance_ins,
-            )
-            Lat[0, t] = Lat[0, t] - x_error[0]  # x_error[0] = delta_lat
-            Lon[0, t] = Lon[0, t] - x_error[1]  # x_error[1] = delta_lon
-            x_error_old = np.copy(x_error)
+        # Speed integration
+        v_geo_vector = v_geo_vector + compute_delta_v_geo(t_g_b=t_g_b, 
+                                                  delta_v_b=np.array([ivx[0, t], ivy[0, t], ivz[0, t]])) # formule d'euler donc t-1
+        # Attitude integration
+        curve_matrix = compute_curve_matrix(Lat[0, t]) # Latitude pas encore dispo
+        delta_theta_g_gi = compute_delta_theta_g_gi(curve_matrix, v_geo_vector, t_g_t) # bizarre : curve_matrix est ancienne mais v_geo_vector est actualisee
+        t_g_b = bortz_rot(delta_theta_g_gi) @ t_g_b @ bortz_rot(-np.array([iax[0,t], iay[0,t], iaz[0,t]])) # je ne sais pas me prononcer sur le synchronisme
+        
+        # Position integration
+        t_g_t = bortz_rot(curve_matrix @ v_geo_vector * dt) @ t_g_t 
+        
+        # Attitude and position extraction
+        Lat[0,t], Lon[0,t] = tgt_2_lat_lon(t_g_t)
+        Cap[0,t], Rou[0,t], Tan[0,t] = tbg_2_k_r_t(tbg = t_g_b.T)
     # --------------------------------------------------------------------------------
 
     # Création d'une nouvelle structure pour les données en sortie

@@ -44,8 +44,8 @@ import webbrowser
 # --------------------------- CHOIX DE L'ESSAI---------------------------------
 
 # Choix de l'essai, choix disponibles : 'aller', 'boucle'
-# CHOIX_TRAJ = "boucle"
-CHOIX_TRAJ = "aller"
+CHOIX_TRAJ = "boucle"
+# CHOIX_TRAJ = "aller"
 # Choix de la sauvegarde des figures, choix disponibles : True ou False (booléen)
 SAVE_FIG = False
 
@@ -147,7 +147,7 @@ elif map_utile == "Fecamp":
 #                     contenu_nav_calculee["Inc_Ang_Xm"],contenu_nav_calculee["Inc_Ang_Ym"],contenu_nav_calculee["Inc_Ang_Zm"],)
 
 fig7 = trace_positions_gnss(
-    contenu_nav_calculee["temps_s"][0:70600],
+    contenu_nav_calculee["temps_s"],
     contenu_nav_calculee["Lat_calculee_deg"],
     contenu_nav_calculee["Lon_calculee_deg"],
     contenu_nav_calculee["Alt_calculee_m"],

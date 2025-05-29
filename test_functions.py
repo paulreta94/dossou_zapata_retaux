@@ -17,7 +17,10 @@ def test_k_r_t_2_tbg():
                         rotation(0, "x") @ rotation(0, "y") @ rotation(0, "z") @ rotation(np.pi, "x")) == True)
 
 def test_tbg_2_k_r_t():
-    assert (np.allclose(tbg_2_k_r_t(k_r_t_2_tbg(k = 0, r = 0, t = 0)),
-                       np.array([0,0,0])) == True)
+    assert (tbg_2_k_r_t(k_r_t_2_tbg(k = 0, r = 0, t = 0)) == (pytest.approx(0),pytest.approx(0),pytest.approx(0)))
+    
+def test_tgt_2_lat_lon():
+    assert (tgt_2_lat_lon(lat_lon_2_tgt(lat=0,lon=0)) == (pytest.approx(0), pytest.approx(0)))
 
-test_tbg_2_k_r_t()
+# def test_bort_rot():
+#     assert (np.allclose(bortz_rot(np.array([0,0,0])), np.eye(3)) == True)
