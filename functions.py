@@ -1,20 +1,62 @@
 import numpy as numpy
 import numpy as np
-from math import sin, cos, tan, asin, acos, atan2, fabs, sqrt
+
+"""Basic navigation functions;
+conventions : 
+    - [i] : inertial frame
+    - [t] : Earth Centered Earth Fixed (ECEF) frame
+    - [g] : local geographical frame : North-West-Up
+    - [b] : body frame : Forth-Right-Down"""
+
+def rotation(angle:float, axis:str):
+    """angle : float - angle in rad
+    axis : str - "x" / "y" / "z" - name of the axis
+    Returns the rotation matrix around the mentionned axis"""
+    if axis == "x":
+        return np.array([[1, 0,              0],
+                         [0, np.cos(angle),  np.sin(angle)],
+                         [0, -np.sin(angle), np.cos(angle)]])
+    elif axis == "y":
+        return np.array([[np.cos(angle), 0, -np.sin(angle)],
+                         [0,             1, 0],
+                         [np.sin(angle), 0, np.cos(angle)]])
+    else:
+        return np.array([[np.cos(angle),  np.sin(angle), 0],
+                         [-np.sin(angle), np.cos(angle), 0],
+                         [0,              0,             1]])
 
 def lat_lon_2_tgt(lat:float, lon: float):
+    "Returns the matrix enabling to shift from [t] to [g]"
     return np.array([[-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)],
                      [np.sin(lon),                -np.cos(lon),               0],
                      [np.cos(lat) * np.cos(lon),  np.cos(lat) * np.sin(lon),  np.sin(lat)]])
     
 def k_r_t_2_tbg(k: float, r:float, t:float):
-    return np.array([[np.cos(k) * np.cos(t), -np.sin(k) * np.cos(t), np.sin(t)],
+    """Returns matrix enabling to shift from [g] to [b]"""
+    return np.array([[np.cos(k) * np.cos(t), 
+                      -np.sin(k) * np.cos(t), 
+                      np.sin(t)],
                      [-np.sin(k) * np.cos(r) + np.cos(k) * np.sin(t) * np.sin(r),
                       -np.cos(k) * np.cos(r) - np.sin(k) * np.sin(t) * np.sin(r),
                       -np.cos(t) * np.sin(r)],
                      [np.sin(k) * np.sin(r) + np.cos(k) * np.sin(t) * np.cos(r),
                       np.cos(k) * np.sin(r) - np.sin(k) * np.sin(t) * np.cos(r),
                       -np.cos(t) * np.cos(r)]])
+    
+def compute_curve_matrix(lat: float, r_earth: float):
+    return np.array([[0,         -1/r_earth,             0],
+                     [1/r_earth, 0,                      0],
+                     [0,         -1/r_earth*np.tan(lat), 0]])
+    
+def tbg_2_k_r_t(tbg:np.ndarray):
+    """Extracting heading (k), roll(r) and pitch (t) from tbg matrix"""
+    return np.array([np.arctan2(-tbg[0,1], tbg[0,0]), 
+    # return np.array([-np.arctan2(tbg[0,0], tbg[0,1]), 
+                     np.arctan2(-tbg[1,2],-tbg[2,2]), 
+                    #  np.arctan2(tbg[2,2],tbg[1,2]), 
+                     np.arccos(np.sqrt(1 - tbg[0,2] ** 2))])
+    
+
 def angle2dcm(yaw, pitch, roll, input_units="rad", rotation_sequence="321"):
     """
     Returns a transformation matrix (aka direction cosine matrix or DCM) which

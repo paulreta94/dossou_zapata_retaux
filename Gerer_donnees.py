@@ -117,6 +117,10 @@ class NavInput:
     # Déclaration des paramètres initiaux
     Cap_initial_rad: float = 0
     """Cap initial en radians, float"""
+    Rou_initial_rad: float = 0
+    """Rou initial en radians, float"""
+    Tan_initial_rad: float = 0
+    """Tan initial en radians, float"""
     Lon_initiale_rad: float = 0
     """Longitude initiale en radians, float"""
     Lat_initiale_rad: float = 0

@@ -66,15 +66,16 @@ def calcul_nav(data_in: NavInput, donnees_NI_dispo: bool):
     Vxm = data_in.Vx_m
     Vym = data_in.Vy_m
     Vzm = data_in.Vz_m
-    d_odo = data_in.odo
+    lat_gnss = data_in.lat_gnss
+    lon_gnss = data_in.lon_gnss
     # Constantes utiles aux calculs
     g = 9.81  # attraction terrestre
     dt = 0.01  # pas de temps
     Rt = 6378000.0  # Rayon terrestre en mètres
     alignment_duration = 777  # unit : seconds
     # Initialisation de la navigation
-    Rou[0, 0] = 0  # Initialisation de la valeur de roulis
-    Tan[0, 0] = 0  # Initialisation de la valeur de tangage
+    Rou[0, 0] = data_in.Rou_initial_rad  # Initialisation de la valeur de roulis
+    Tan[0, 0] = data_in.Tan_initial_rad  # Initialisation de la valeur de tangage
     Cap[0, 0] = data_in.Cap_initial_rad  # Initialisation de la valeur de cap
     Lon[0, 0] = data_in.Lon_initiale_rad  # Initialisation de la valeur de longitude
     Lat[0, 0] = data_in.Lat_initiale_rad  # Initialisation de la valeur de latitude

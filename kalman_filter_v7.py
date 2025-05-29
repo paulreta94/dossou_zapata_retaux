@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-from functions import compute_t_g_b
+# from functions import compute_t_g_b
 
 """ kalman_filter_v6 : with vertical navigation
 kalman_filter_v7 : without vertical navigation"""

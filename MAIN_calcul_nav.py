@@ -22,17 +22,17 @@ from Lecture_donnees import (
     to_keep,
 )
 from Entretien_localisation import calcul_nav
-import scipy
+import scipy#type:ignore
 from Gerer_donnees import NavInput
 from dataclasses import asdict
 
 # --------------- CHOIX DE L'HYBRIDATION ET DE L'ESSAI----------------------------
 
 # Choix de l'hybridation, choix disponibles : 'zupt', 'gps', 'odo', 'vordme'
-CHOIX_HYB = "odo"
+CHOIX_HYB = "gps"
 # Choix de l'essai, choix disponibles : 'aller', 'boucle', 'soutenance'
 # CHOIX_TRAJ = "boucle"
-CHOIX_TRAJ = "aller"
+CHOIX_TRAJ = "boucle"
 
 # --------------------------------------------------------------------------------
 
@@ -54,7 +54,7 @@ Premier_chemin = (
 
 # Définition des variables du premier fichier
 contenu_inertiel = scipy.io.loadmat(Premier_chemin)
-print(contenu_inertiel.keys())
+print(f"\t\t*** Inertial data : {contenu_inertiel.keys()}***\n")
 
 # On remonte au dossier parent du premier chemin pour rester dans la même hybridation
 rep_mat = Premier_chemin.parent
@@ -69,11 +69,18 @@ if len(list_chemin) == 1:
     # Si effectivement il y a des données inertielles on y applique le chemin et on load les données contenues
     Second_chemin = list_chemin[0]
     contenu_non_inertiel = scipy.io.loadmat(Second_chemin)
-    print(contenu_non_inertiel.keys())
+    print(f"\t\t*** Non inertial data : {contenu_non_inertiel.keys()}***\n")
 else:
     # S'il n'y a rien alors le chemin est vide et rien ne se passe
     Second_chemin = None
 
+perfact_nav_path = (
+    rep_tp
+    / "02-Navigations_parfaites"
+    / f"Nav_reference_{corres_traj_chemin[CHOIX_TRAJ]}.mat"
+)
+
+perfect_nav = scipy.io.loadmat(perfact_nav_path)
 # Variable qui définit s'il y a des données non inertielles ou non
 donnees_NI_dispo = bool(Second_chemin)
 
@@ -99,12 +106,14 @@ donnees_in.inc_vit_z_ms = contenu_inertiel["inc_vit_z_ms"]
 donnees_in.inc_angl_x_rad = contenu_inertiel["inc_angl_x_rad"]
 donnees_in.inc_angl_y_rad = contenu_inertiel["inc_angl_y_rad"]
 donnees_in.inc_angl_z_rad = contenu_inertiel["inc_angl_z_rad"]
-donnees_in.Cap_initial_rad = Cap_initial_rad
+donnees_in.Cap_initial_rad = perfect_nav["cap_ins"][0,1]
+donnees_in.Rou_initial_rad = perfect_nav["roulis_ins"][0,1]
+donnees_in.Tan_initial_rad = perfect_nav["tangage_ins"][0,1]
 donnees_in.Lon_initiale_rad = Lon_initiale_rad
 donnees_in.Lat_initiale_rad = Lat_initiale_rad
 donnees_in.Alt_initiale_m = Alt_initiale_m
-donnees_in.odo = contenu_non_inertiel["Dist_Odo_m"]
-
+donnees_in.lat_gnss = contenu_non_inertiel["lat_gps_deg"]
+donnees_in.lon_gnss = contenu_non_inertiel["lon_gps_deg"]
 
 # boucle itérative sur les données
 
