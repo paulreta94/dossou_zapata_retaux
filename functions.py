@@ -2,7 +2,19 @@ import numpy as numpy
 import numpy as np
 from math import sin, cos, tan, asin, acos, atan2, fabs, sqrt
 
-
+def lat_lon_2_tgt(lat:float, lon: float):
+    return np.array([[-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)],
+                     [np.sin(lon),                -np.cos(lon),               0],
+                     [np.cos(lat) * np.cos(lon),  np.cos(lat) * np.sin(lon),  np.sin(lat)]])
+    
+def k_r_t_2_tbg(k: float, r:float, t:float):
+    return np.array([[np.cos(k) * np.cos(t), -np.sin(k) * np.cos(t), np.sin(t)],
+                     [-np.sin(k) * np.cos(r) + np.cos(k) * np.sin(t) * np.sin(r),
+                      -np.cos(k) * np.cos(r) - np.sin(k) * np.sin(t) * np.sin(r),
+                      -np.cos(t) * np.sin(r)],
+                     [np.sin(k) * np.sin(r) + np.cos(k) * np.sin(t) * np.cos(r),
+                      np.cos(k) * np.sin(r) - np.sin(k) * np.sin(t) * np.cos(r),
+                      -np.cos(t) * np.cos(r)]])
 def angle2dcm(yaw, pitch, roll, input_units="rad", rotation_sequence="321"):
     """
     Returns a transformation matrix (aka direction cosine matrix or DCM) which
